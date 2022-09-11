@@ -58,10 +58,7 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 // UnmarshalCaddyfile implements caddyfile.Unmarshaler.
 func (l *ListenCaddy) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	for d.Next() {
-		if !d.Args(&l.APIKey) {
-			return d.ArgErr()
-		}
-		if !d.Args(&l.BannedURIs) {
+		if !d.Args(&l.APIKey, &l.BannedURIs) {
 			return d.ArgErr()
 		}
 	}
