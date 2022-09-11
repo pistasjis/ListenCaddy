@@ -1,7 +1,10 @@
 package listencaddy
 
 import (
+	"bytes"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
@@ -33,12 +36,6 @@ func (l *ListenCaddy) Provision(ctx caddy.Context) error {
 	default:
 		return nil
 	}
-	switch l.BannedURIs {
-	case "":
-		return fmt.Errorf("Can't find any banned URIs/paths. Check your Caddyfile and read the docs.")
-	default:
-		return nil
-	}
 }
 
 func (l *ListenCaddy) Validate() error {
@@ -49,6 +46,13 @@ func (l *ListenCaddy) Validate() error {
 		return fmt.Errorf("Can't find any banned URIs/paths. Check your Caddyfile and read the docs.")
 	}
 	return nil
+}
+
+func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
+	if strings.Contains(r.URL.Path, l.BannedURIs) {
+		report(r.RemoteAddr)
+	}
+	return next.ServeHTTP(w, r)
 }
 
 // UnmarshalCaddyfile implements caddyfile.Unmarshaler.
@@ -69,4 +73,30 @@ func parseCaddyfile(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error)
 	var l ListenCaddy
 	err := l.UnmarshalCaddyfile(h.Dispenser)
 	return l, err
+}
+
+// Interface guards
+var (
+	_ caddy.Provisioner           = (*ListenCaddy)(nil)
+	_ caddy.Validator             = (*ListenCaddy)(nil)
+	_ caddyhttp.MiddlewareHandler = (*ListenCaddy)(nil)
+	_ caddyfile.Unmarshaler       = (*ListenCaddy)(nil)
+)
+
+func report(ip string) (l *ListenCaddy) {
+	fmt.Println("Reporting IP: " + ip)
+
+	jsonBody := []byte(`{"ip": "` + ip + `", "categories": ["18"], "comment": "IP accessed a banned URI/Path (ListenCaddy)"}`)
+	bodyReader := bytes.NewReader(jsonBody)
+
+	requestURL := fmt.Sprintf("https://api.abuseipdb.com/api/v2/report")
+	req, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+	req.Header.Set("Key", l.APIKey)
+	req.Header.Set("Accept", "application/json")
+	defer req.Body.Close()
+
+	return nil
 }
