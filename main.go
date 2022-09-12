@@ -106,7 +106,6 @@ func report(ip string) (l *ListenCaddy) {
 
 	jsonBody := []byte(`{"ip": "` + ip + `", "categories": ["18"], "comment": "IP accessed a banned URI/Path (ListenCaddy)"}`)
 	bodyReader := bytes.NewReader(jsonBody)
-
 	requestURL := fmt.Sprintf("https://api.abuseipdb.com/api/v2/report")
 	req, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
 	req.Header.Set("Key", l.APIKey)
@@ -114,7 +113,12 @@ func report(ip string) (l *ListenCaddy) {
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
-	defer req.Body.Close()
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+	defer resp.Body.Close()
 
 	return nil
 }
