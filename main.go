@@ -108,6 +108,7 @@ func report(ip string) (l *ListenCaddy) {
 	values := map[string]string{"ip": ip, "categories": "18", "comment": "This IP accessed a banned URI/Path. (ListenCaddy)"}
 	json_data, err := json.Marshal(values)
 
+	fmt.Println(string(json_data))
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -116,6 +117,8 @@ func report(ip string) (l *ListenCaddy) {
 		bytes.NewBuffer(json_data))
 
 	resp.Header.Set("Key", l.APIKey)
+
+	fmt.Println(resp)
 	if err != nil {
 		fmt.Println(err)
 	}
