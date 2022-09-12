@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/caddyserver/caddy/v2"
@@ -49,8 +50,12 @@ func (l *ListenCaddy) Validate() error {
 }
 
 func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-	if strings.Contains(r.URL.Path, l.BannedURIs) {
-		report(r.RemoteAddr)
+	match, _ := regexp.MatchString(l.BannedURIs, r.URL.Path)
+
+	if match {
+		fmt.Println("Banned URI/Path accessed: " + r.URL.Path)
+		split := strings.Split(r.RemoteAddr, ":")
+		report(split[0])
 	}
 	return next.ServeHTTP(w, r)
 }
@@ -58,8 +63,24 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 // UnmarshalCaddyfile implements caddyfile.Unmarshaler.
 func (l *ListenCaddy) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	for d.Next() {
-		if !d.Args(&l.APIKey, &l.BannedURIs) {
+		if d.NextArg() {
 			return d.ArgErr()
+		}
+		for d.NextBlock(0) {
+			switch d.Val() {
+			case "api_key":
+				if !d.NextArg() {
+					return d.ArgErr()
+				}
+				l.APIKey = d.Val()
+			case "banned_uris":
+				if !d.NextArg() {
+					return d.ArgErr()
+				}
+				l.BannedURIs = d.Val()
+			default:
+				return d.Errf("theres a bit too many subdirectives here, remove: '%s'", d.Val())
+			}
 		}
 	}
 	return nil

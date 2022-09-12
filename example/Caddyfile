@@ -1,0 +1,11 @@
+{
+    order listencaddy before file_server
+}
+:80 {
+    respond / "Hello, world!" 200
+
+    listencaddy {
+        api_key "yourAPIkey"
+        banned_uris "/admin|/wp-admin"
+    }
+}
