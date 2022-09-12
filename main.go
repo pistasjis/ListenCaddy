@@ -109,7 +109,7 @@ func report(ip string) (l *ListenCaddy) {
 	json_data, err := json.Marshal(values)
 
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
 	}
 
 	resp, err := http.Post("https://api.abuseipdb.com/api/v2/report", "application/json",
@@ -117,7 +117,7 @@ func report(ip string) (l *ListenCaddy) {
 
 	resp.Header.Set("Key", l.APIKey)
 	if err != nil {
-		fmt.Print(err)
+		fmt.Println(err)
 	}
 
 	var res map[string]interface{}
