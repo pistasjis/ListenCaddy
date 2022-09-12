@@ -3,6 +3,7 @@ package listencaddy
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
@@ -119,6 +120,9 @@ func report(ip string) (l *ListenCaddy) {
 		fmt.Println("Error: ", err)
 	}
 	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println("response Body:", string(body))
 
 	return nil
 }
