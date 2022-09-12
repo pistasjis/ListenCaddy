@@ -2,8 +2,8 @@ package listencaddy
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
@@ -105,25 +105,26 @@ var (
 func report(ip string) (l *ListenCaddy) {
 	fmt.Println("Reporting IP: " + ip)
 
-	jsonBody := []byte(`{"ip": "` + ip + `", "categories": "18", "comment": "IP accessed a banned URI/Path (ListenCaddy)"}`)
-	bodyReader := bytes.NewReader(jsonBody)
-	fmt.Println("Body: " + string(jsonBody))
-	requestURL := fmt.Sprintf("https://api.abuseipdb.com/api/v2/report")
-	req, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
-	req.Header.Set("Key", l.APIKey)
-	req.Header.Set("Accept", "application/json")
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
-	defer resp.Body.Close()
+	values := map[string]string{"ip": ip, "categories": "18", "comment": "This IP accessed a banned URI/Path. (ListenCaddy)"}
+	json_data, err := json.Marshal(values)
 
-	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("response Body:", string(body))
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	resp, err := http.Post("https://api.abuseipdb.com/api/v2/report", "application/json",
+		bytes.NewBuffer(json_data))
+
+	resp.Header.Set("Key", l.APIKey)
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	var res map[string]interface{}
+
+	json.NewDecoder(resp.Body).Decode(&res)
+
+	fmt.Println(res["json"])
 
 	return nil
 }
