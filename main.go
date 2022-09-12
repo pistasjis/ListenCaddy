@@ -109,11 +109,11 @@ func report(ip string) (l *ListenCaddy) {
 
 	requestURL := fmt.Sprintf("https://api.abuseipdb.com/api/v2/report")
 	req, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
+	req.Header.Set("Key", l.APIKey)
+	req.Header.Set("Accept", "application/json")
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
-	req.Header.Set("Key", l.APIKey)
-	req.Header.Set("Accept", "application/json")
 	defer req.Body.Close()
 
 	return nil
