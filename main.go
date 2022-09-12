@@ -105,16 +105,15 @@ var (
 func report(ip string) (l *ListenCaddy) {
 	fmt.Println("Reporting IP: " + ip)
 
-	values := map[string]string{"ip": ip, "categories": "18", "comment": "This IP accessed a banned URI/Path. (ListenCaddy)"}
-	json_data, err := json.Marshal(values)
+	values, _ := json.Marshal(map[string]string{
+		"ip":         ip,
+		"categories": "18",
+		"comment":    "This IP accessed a banned URI/Path. (ListenCaddy)",
+	})
 
-	fmt.Println(string(json_data))
-	if err != nil {
-		fmt.Println(err)
-	}
+	json_data := bytes.NewBuffer(values)
 
-	resp, err := http.Post("https://api.abuseipdb.com/api/v2/report", "application/json",
-		bytes.NewBuffer(json_data))
+	resp, err := http.Post("https://api.abuseipdb.com/api/v2/report", "application/json", json_data)
 
 	resp.Header.Set("Key", l.APIKey)
 
@@ -123,11 +122,7 @@ func report(ip string) (l *ListenCaddy) {
 		fmt.Println(err)
 	}
 
-	var res map[string]interface{}
-
-	json.NewDecoder(resp.Body).Decode(&res)
-
-	fmt.Println(res["json"])
+	defer resp.Body.Close()
 
 	return nil
 }
