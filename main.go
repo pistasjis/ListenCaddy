@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"ioutil"
 	"net/http"
 	"regexp"
 	"strings"
@@ -123,6 +124,13 @@ func report(ip string) (l *ListenCaddy) {
 	}
 
 	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	sb := string(body)
+	fmt.Println(sb)
 
 	return nil
 }
