@@ -105,7 +105,7 @@ var (
 func report(ip string) (l *ListenCaddy) {
 	fmt.Println("Reporting IP: " + ip)
 
-	jsonBody := []byte(`{"ip": "` + ip + `", "categories": ["18"], "comment": "IP accessed a banned URI/Path (ListenCaddy)"}`)
+	jsonBody := []byte(`{"ip": "` + ip + `", "categories": "18", "comment": "IP accessed a banned URI/Path (ListenCaddy)"}`)
 	bodyReader := bytes.NewReader(jsonBody)
 	requestURL := fmt.Sprintf("https://api.abuseipdb.com/api/v2/report")
 	req, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
