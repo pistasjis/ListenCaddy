@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"ioutil"
 	"net/http"
 	"regexp"
 	"strings"
@@ -57,7 +56,7 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 	if match {
 		fmt.Println("Banned URI/Path accessed: " + r.URL.Path)
 		split := strings.Split(r.RemoteAddr, ":")
-		report(split[0])
+		report(split[0], l.APIKey)
 	}
 	return next.ServeHTTP(w, r)
 }
@@ -103,34 +102,41 @@ var (
 	_ caddyfile.Unmarshaler       = (*ListenCaddy)(nil)
 )
 
-func report(ip string) (l *ListenCaddy) {
+type AbuseIPDBReport struct {
+	IP         string `json:"ip"`
+	Categories string `json:"categories"`
+	Comment    string `json:"comment"`
+}
+
+func report(ip string, apikey string) (l *ListenCaddy) {
 	fmt.Println("Reporting IP: " + ip)
 
-	values, _ := json.Marshal(map[string]string{
-		"ip":         ip,
-		"categories": "18",
-		"comment":    "This IP accessed a banned URI/Path. (ListenCaddy)",
-	})
+	// HTTP endpoint
+	posturl := "https://api.abuseipdb.com/api/v2/report"
 
-	json_data := bytes.NewBuffer(values)
-
-	resp, err := http.Post("https://api.abuseipdb.com/api/v2/report", "application/json", json_data)
-
-	resp.Header.Set("Key", l.APIKey)
-
-	fmt.Println(resp)
-	if err != nil {
-		fmt.Println(err)
+	reportJSON := AbuseIPDBReport{
+		IP:         ip,
+		Categories: "19,21",
+		Comment:    "This IP accessed a banned URI/path. (ListenCaddy)",
 	}
 
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
+	body, _ := json.Marshal(reportJSON)
+	// Create a HTTP post request
+	r, err := http.NewRequest("POST", posturl, bytes.NewBuffer(body))
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
-	sb := string(body)
-	fmt.Println(sb)
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Accept", "application/json")
+	r.Header.Add("Key", apikey)
 
-	return nil
+	client := &http.Client{}
+	res, err := client.Do(r)
+	if err != nil {
+		panic(err)
+	}
+
+	defer res.Body.Close()
+	fmt.Println("response Status:", res.Status)
+	return l
 }
