@@ -57,6 +57,7 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 		fmt.Println("Banned URI/Path accessed: " + r.URL.Path)
 		split := strings.Split(r.RemoteAddr, ":")
 		report(split[0], l.APIKey)
+		http.Error(w, "Don't access banned paths, please. You have now been reported to AbuseIPDB: https://www.abuseipdb.com/check/"+split[0]+". Powered by ListenCaddy", http.StatusForbidden)
 	}
 	return next.ServeHTTP(w, r)
 }
