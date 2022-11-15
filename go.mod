@@ -1,4 +1,4 @@
-module github.com/DrivetDevelopment/ListenCaddy
+module github.com/Odyssey346/ListenCaddy
 
 go 1.19
 
