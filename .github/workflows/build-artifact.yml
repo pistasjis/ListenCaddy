@@ -28,5 +28,5 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: caddy
+        name: Caddy_${{ matrix.platform }}_${{ github.run_id }}_ListenCaddy
         path: caddy
