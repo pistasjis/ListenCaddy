@@ -12,6 +12,8 @@ import (
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
+
+	"go.uber.org/zap"
 )
 
 func init() {
@@ -22,6 +24,7 @@ func init() {
 type ListenCaddy struct {
 	APIKey     string `json:"apikey,omitempty"`
 	BannedURIs string `json:"banned_uris,omitempty"`
+	Logger     *zap.Logger
 }
 
 func (ListenCaddy) CaddyModule() caddy.ModuleInfo {
@@ -32,6 +35,7 @@ func (ListenCaddy) CaddyModule() caddy.ModuleInfo {
 }
 
 func (l *ListenCaddy) Provision(ctx caddy.Context) error {
+	l.Logger = ctx.Logger(l)
 	switch l.APIKey {
 	case "":
 		return fmt.Errorf("Missing API Key from AbuseIPDB. Check your Caddyfile and read the docs.")
@@ -52,14 +56,49 @@ func (l *ListenCaddy) Validate() error {
 
 func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
 	match, _ := regexp.MatchString(l.BannedURIs, r.URL.Path)
+	split := strings.Split(r.RemoteAddr, ":")
 
 	if match {
-		fmt.Println("Banned URI/Path accessed: " + r.URL.Path)
-		split := strings.Split(r.RemoteAddr, ":")
-		report(split[0], l.APIKey)
-		http.Error(w, "Don't access banned paths, please. You have now been reported to AbuseIPDB: https://www.abuseipdb.com/check/"+split[0]+". Powered by ListenCaddy", http.StatusForbidden)
+		http.Error(w, r.URL.Path+" is a banned path. Powered by ListenCaddy", http.StatusForbidden)
+		go func(l ListenCaddy) {
+			l.Logger.Info("Reporting IP to AbuseIPDB", zap.String("ip", split[0]), zap.String("path", r.URL.Path))
+
+			// HTTP endpoint
+			posturl := "https://api.abuseipdb.com/api/v2/report"
+
+			reportJSON := AbuseIPDBReport{
+				IP:         split[0],
+				Categories: "19,21",
+				Comment:    "This IP accessed a banned URI/path: " + r.URL.Path + ". (ListenCaddy)",
+			}
+
+			body, _ := json.Marshal(reportJSON)
+			// Create a HTTP post request
+			r, err := http.NewRequest("POST", posturl, bytes.NewBuffer(body))
+			if err != nil {
+				panic(err)
+			}
+			r.Header.Set("Content-Type", "application/json")
+			r.Header.Set("Accept", "application/json")
+			r.Header.Add("Key", l.APIKey)
+
+			client := &http.Client{}
+			res, err := client.Do(r)
+			if err != nil {
+				panic(err)
+			}
+
+			defer res.Body.Close()
+			l.Logger.Info("response Status:", zap.String("Status", res.Status))
+		}(l)
 	}
 	return next.ServeHTTP(w, r)
+}
+
+type AbuseIPDBReport struct {
+	IP         string `json:"ip"`
+	Categories string `json:"categories"`
+	Comment    string `json:"comment"`
 }
 
 // UnmarshalCaddyfile implements caddyfile.Unmarshaler.
@@ -102,42 +141,3 @@ var (
 	_ caddyhttp.MiddlewareHandler = (*ListenCaddy)(nil)
 	_ caddyfile.Unmarshaler       = (*ListenCaddy)(nil)
 )
-
-type AbuseIPDBReport struct {
-	IP         string `json:"ip"`
-	Categories string `json:"categories"`
-	Comment    string `json:"comment"`
-}
-
-func report(ip string, apikey string) (l *ListenCaddy) {
-	fmt.Println("Reporting IP: " + ip)
-
-	// HTTP endpoint
-	posturl := "https://api.abuseipdb.com/api/v2/report"
-
-	reportJSON := AbuseIPDBReport{
-		IP:         ip,
-		Categories: "19,21",
-		Comment:    "This IP accessed a banned URI/path. (ListenCaddy)",
-	}
-
-	body, _ := json.Marshal(reportJSON)
-	// Create a HTTP post request
-	r, err := http.NewRequest("POST", posturl, bytes.NewBuffer(body))
-	if err != nil {
-		panic(err)
-	}
-	r.Header.Set("Content-Type", "application/json")
-	r.Header.Set("Accept", "application/json")
-	r.Header.Add("Key", apikey)
-
-	client := &http.Client{}
-	res, err := client.Do(r)
-	if err != nil {
-		panic(err)
-	}
-
-	defer res.Body.Close()
-	fmt.Println("response Status:", res.Status)
-	return l
-}

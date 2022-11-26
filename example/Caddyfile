@@ -1,5 +1,5 @@
 {
-    order listencaddy before file_server
+    order listencaddy before respond
 }
 :80 {
     respond / "Hello, world!" 200
