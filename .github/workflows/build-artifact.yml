@@ -30,3 +30,9 @@ jobs:
       with:
         name: Caddy_${{ matrix.platform }}_${{ github.run_id }}_ListenCaddy
         path: caddy
+    - if: matrix.platform == 'windows-latest'
+      name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: Caddy_${{ matrix.platform }}_${{ github.run_id }}_ListenCaddy.exe
+        path: caddy.exe
