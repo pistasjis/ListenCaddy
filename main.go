@@ -21,6 +21,7 @@ func init() {
 	httpcaddyfile.RegisterHandlerDirective("listencaddy", parseCaddyfile)
 }
 
+// ListenCaddy is a Caddy http.handlers module that listens for requests to specific URIs/paths and reports IPs that hit these URIs to AbuseIPDB.
 type ListenCaddy struct {
 	APIKey     string `json:"apikey,omitempty"`
 	BannedURIs string `json:"banned_uris,omitempty"`
