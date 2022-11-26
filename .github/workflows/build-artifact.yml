@@ -2,7 +2,8 @@ name: Build Artifact
 
 on:
   push:
-    - master
+    branches:
+      - master
 
 jobs:
   build:
