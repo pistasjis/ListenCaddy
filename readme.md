@@ -1,7 +1,7 @@
 # ListenCaddy
 A Caddy 2 module that **listens** for **abuse** and reports abuse to AbuseIPDB.
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/DrivetDevelopment/ListenCaddy)](https://goreportcard.com/report/github.com/DrivetDevelopment/ListenCaddy) [![Build Artifact](https://github.com/Odyssey346/ListenCaddy/actions/workflows/build-artifact.yml/badge.svg)](https://github.com/Odyssey346/ListenCaddy/actions/workflows/build-artifact.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Odyssey346/ListenCaddy)](https://goreportcard.com/report/github.com/Odyssey346/ListenCaddy) [![Build Artifact](https://github.com/Odyssey346/ListenCaddy/actions/workflows/build-artifact.yml/badge.svg)](https://github.com/Odyssey346/ListenCaddy/actions/workflows/build-artifact.yml)
 
 ## Setup
 You will need the following before you can begin using ListenCaddy:
