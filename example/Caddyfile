@@ -1,5 +1,5 @@
 {
-    order listencaddy before respond
+    order listencaddy first
 }
 :80 {
     respond / "Hello, world!" 200
@@ -7,5 +7,10 @@
     listencaddy {
         api_key "yourAPIkey"
         banned_uris "/admin|/wp-admin"
+        whitelisted_ips "127.0.0.1"
+    }
+
+    handle_path /admin {
+        respond "Welcome!" 200
     }
 }

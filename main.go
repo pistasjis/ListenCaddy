@@ -26,7 +26,9 @@ type ListenCaddy struct {
 	APIKey string `json:"apikey,omitempty"`
 	// BannedURIs is a regex of banned URIs/paths.
 	BannedURIs string `json:"banned_uris,omitempty"`
-	Logger     *zap.Logger
+	// WhitelistedIPs is a regex of whitelisted IPs.
+	WhitelistedIPs string `json:"whitelisted_ips,omitempty"`
+	Logger         *zap.Logger
 }
 
 func (ListenCaddy) CaddyModule() caddy.ModuleInfo {
@@ -61,6 +63,13 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 
 	split := regexp.MustCompile(`((?::))(?:[0-9]+)$`).Split(r.RemoteAddr, -1)
 	if match {
+		if l.WhitelistedIPs != "" {
+			isWhitelisted, _ := regexp.MatchString(l.WhitelistedIPs, split[0])
+			if isWhitelisted {
+				l.Logger.Info("Whitelisted IP accessed a banned URI/path", zap.String("ip", split[0]), zap.String("path", r.URL.Path), zap.String("whitelisted_ips", l.WhitelistedIPs))
+				return next.ServeHTTP(w, r)
+			}
+		}
 		http.Error(w, r.URL.Path+" is a banned path. Powered by ListenCaddy", http.StatusForbidden)
 		go func(l ListenCaddy) {
 			l.Logger.Info("Reporting IP to AbuseIPDB", zap.String("ip", split[0]), zap.String("path", r.URL.Path))
@@ -121,6 +130,11 @@ func (l *ListenCaddy) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 					return d.ArgErr()
 				}
 				l.BannedURIs = d.Val()
+			case "whitelisted_ips":
+				if !d.NextArg() {
+					return d.ArgErr()
+				}
+				l.WhitelistedIPs = d.Val()
 			default:
 				return d.Errf("theres a bit too many subdirectives here, remove: '%s'", d.Val())
 			}

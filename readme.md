@@ -29,7 +29,7 @@ sudo chmod +x /usr/bin/caddy
 Open up your Caddyfile using your favourite editor and add the following to the top:
 ```caddyfile
 {
-    order listencaddy before file_server
+    order listencaddy first
 }
 ```
 This tells Caddy to prioritize ListenCaddy before anything else, which is required.
@@ -38,7 +38,8 @@ Now, you can set up a website to use ListenCaddy. Here's an example (oh also, we
 ```caddyfile
 listencaddy {
         api_key "yourAPIkey"
-        banned_uris "/admin|/wp-admin|/.env|/phpMyAdmin/scripts/setup.php" # TODO: add more of these. If you want to help, contribute here: https://github.com/DrivetDevelopment/Wiki/blob/main/listencaddy/get-started.md
+        banned_uris "/admin|/wp-admin|/.env|/phpMyAdmin/scripts/setup.php" # TODO: add more of these. If you want to help, contribute!
+		whitelisted_ips "1.1.1.1|9.9.9.9" #optional
 }
 ```
 
@@ -49,6 +50,7 @@ If you don't like repetition, then you can do something like this:
 	listencaddy {
 		api_key "yourAPIkey"
 		banned_uris "/admin|/wp-admin|/.env|/phpMyAdmin/scripts/setup.php"
+		whitelisted_ips "1.1.1.1|9.9.9.9" # optional
 	}
 }
 
