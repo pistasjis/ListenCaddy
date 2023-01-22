@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"strings"
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
@@ -59,8 +58,8 @@ func (l *ListenCaddy) Validate() error {
 
 func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
 	match, _ := regexp.MatchString(l.BannedURIs, r.URL.Path)
-	split := strings.Split(r.RemoteAddr, ":")
 
+	split := regexp.MustCompile(`((?::))(?:[0-9]+)$`).Split(r.RemoteAddr, -1)
 	if match {
 		http.Error(w, r.URL.Path+" is a banned path. Powered by ListenCaddy", http.StatusForbidden)
 		go func(l ListenCaddy) {
