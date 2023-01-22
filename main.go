@@ -26,7 +26,7 @@ type ListenCaddy struct {
 	APIKey string `json:"apikey,omitempty"`
 	// BannedURIs is a regex of banned URIs/paths.
 	BannedURIs string `json:"banned_uris,omitempty"`
-	// WhitelistedIPs is a regex of whitelisted IPs.
+	// WhitelistedIPs is a regex of whitelisted IPs. (optional)
 	WhitelistedIPs string `json:"whitelisted_ips,omitempty"`
 	Logger         *zap.Logger
 }
