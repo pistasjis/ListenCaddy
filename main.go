@@ -12,6 +12,8 @@ import (
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 
+	"text/template"
+
 	"go.uber.org/zap"
 )
 
@@ -28,7 +30,12 @@ type ListenCaddy struct {
 	BannedURIs string `json:"banned_uris,omitempty"`
 	// WhitelistedIPs is a regex of whitelisted IPs. (optional)
 	WhitelistedIPs string `json:"whitelisted_ips,omitempty"`
-	Logger         *zap.Logger
+	// AbuseIPDBMessage is the message that will be sent to AbuseIPDB. Uses Go templates (do {{.Path}} to get path accessed) (optional)
+	AbuseIPDBMessage string `json:"abuseipdb_message,omitempty"`
+	// ResponseMessage is the message that will be sent to the client accessing a resource they're not supposed to. Uses Go templates (do {{.Path}} to get path accessed) (optional)
+	ResponseMessage string `json:"respond_message,omitempty"`
+
+	Logger *zap.Logger
 }
 
 func (ListenCaddy) CaddyModule() caddy.ModuleInfo {
@@ -59,28 +66,84 @@ func (l *ListenCaddy) Validate() error {
 }
 
 func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-	match, _ := regexp.MatchString(l.BannedURIs, r.URL.Path)
+	// used multiple times and seems to blank out after it's used for a bit
+	path := r.URL.Path
+
+	match, _ := regexp.MatchString(l.BannedURIs, path)
 
 	split := regexp.MustCompile(`((?::))(?:[0-9]+)$`).Split(r.RemoteAddr, -1)
 	if match {
 		if l.WhitelistedIPs != "" {
 			isWhitelisted, _ := regexp.MatchString(l.WhitelistedIPs, split[0])
 			if isWhitelisted {
-				l.Logger.Info("Whitelisted IP accessed a banned URI/path", zap.String("ip", split[0]), zap.String("path", r.URL.Path), zap.String("whitelisted_ips", l.WhitelistedIPs))
+				l.Logger.Info("Whitelisted IP accessed a banned URI/path", zap.String("ip", split[0]), zap.String("path", path), zap.String("whitelisted_ips", l.WhitelistedIPs))
 				return next.ServeHTTP(w, r)
 			}
 		}
-		http.Error(w, r.URL.Path+" is a banned path. Powered by ListenCaddy", http.StatusForbidden)
+
+		if l.ResponseMessage != "" {
+			type Response struct {
+				Path string
+			}
+
+			response := Response{
+				Path: path,
+			}
+
+			tmpl, err := template.New("respond_message").Parse(l.ResponseMessage)
+			if err != nil {
+				l.Logger.Info("Error parsing RespondMessage", zap.String("error", err.Error()))
+			}
+
+			var tmpl_output bytes.Buffer
+			templateExecuteError := tmpl.Execute(&tmpl_output, response)
+			if templateExecuteError != nil {
+				l.Logger.Info("Error executing RespondMessage", zap.String("error", templateExecuteError.Error()))
+			}
+
+			http.Error(w, tmpl_output.String(), http.StatusForbidden)
+		} else {
+			http.Error(w, path+" is a banned path. Powered by ListenCaddy", http.StatusForbidden)
+		}
 		go func(l ListenCaddy) {
-			l.Logger.Info("Reporting IP to AbuseIPDB", zap.String("ip", split[0]), zap.String("path", r.URL.Path))
+			l.Logger.Info("Reporting IP to AbuseIPDB", zap.String("ip", split[0]), zap.String("path", path))
 
 			// HTTP endpoint
 			posturl := "https://api.abuseipdb.com/api/v2/report"
 
+			var abuseipdb_comment string
+
+			// check if AbuseIPDBMessage is set
+			if l.AbuseIPDBMessage != "" {
+
+				type Comment struct {
+					Path string
+				}
+
+				comment := Comment{
+					Path: path,
+				}
+
+				tmpl, err := template.New("abuseipdb_comment").Parse(l.AbuseIPDBMessage)
+				if err != nil {
+					l.Logger.Info("Error parsing AbuseIPDBMessage", zap.String("error", err.Error()))
+				}
+
+				var tmpl_output bytes.Buffer
+				templateExecuteError := tmpl.Execute(&tmpl_output, comment)
+				if templateExecuteError != nil {
+					l.Logger.Info("Error executing AbuseIPDBMessage", zap.String("error", templateExecuteError.Error()))
+				}
+
+				abuseipdb_comment = tmpl_output.String()
+			} else {
+				abuseipdb_comment = "This IP accessed a banned path: " + path + ". (ListenCaddy)"
+			}
+
 			reportJSON := AbuseIPDBReport{
 				IP:         split[0],
 				Categories: "19,21",
-				Comment:    "This IP accessed a banned URI/path: " + r.URL.Path + ". (ListenCaddy)",
+				Comment:    abuseipdb_comment,
 			}
 
 			body, _ := json.Marshal(reportJSON)
@@ -135,6 +198,16 @@ func (l *ListenCaddy) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 					return d.ArgErr()
 				}
 				l.WhitelistedIPs = d.Val()
+			case "abuseipdb_message":
+				if !d.NextArg() {
+					return d.ArgErr()
+				}
+				l.AbuseIPDBMessage = d.Val()
+			case "response_message":
+				if !d.NextArg() {
+					return d.ArgErr()
+				}
+				l.ResponseMessage = d.Val()
 			default:
 				return d.Errf("theres a bit too many subdirectives here, remove: '%s'", d.Val())
 			}

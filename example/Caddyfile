@@ -1,13 +1,15 @@
 {
     order listencaddy first
 }
+
 :80 {
     respond / "Hello, world!" 200
 
     listencaddy {
-        api_key "yourAPIkey"
+        api_key "{$ABUSEIPDB_APIKEY}"
         banned_uris "/admin|/wp-admin"
-        whitelisted_ips "127.0.0.1"
+        abuseipdb_message "The IP that was reported tried to access {{.Path}}, which is a banned path on this server. Powered by ListenCaddy (TESTING!)"
+        response_message "You are not allowed to access the {{.Path}} resource. You've been reported to AbuseIPDB. (ListenCaddy)"
     }
 
     handle_path /admin {

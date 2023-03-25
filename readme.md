@@ -37,9 +37,11 @@ This tells Caddy to prioritize ListenCaddy before anything else, which is requir
 Now, you can set up a website to use ListenCaddy. Here's an example (oh also, we use RegEx):
 ```caddyfile
 listencaddy {
-        api_key "yourAPIkey"
+        api_key "yourAPIkey" # You can use an environment variable if you'd like. If you want to, do "{$YOUR_ENV_VAR_NAME}".
         banned_uris "/admin|/wp-admin|/.env|/phpMyAdmin/scripts/setup.php" # TODO: add more of these. If you want to help, contribute!
 		whitelisted_ips "1.1.1.1|9.9.9.9" #optional
+		abuseipdb_message "This IP accessed the path {{.Path}}, which is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to AbuseIPDB as comment. You can use {{.Path}} in the message to show the path that was accessed, which utilizes the Go template engine.
+		response_message "{{.Path}} is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to the client when they accessed a banned path.. You can use {{.Path}} in the message to show the path that was accessed, which utilizes the Go template engine.
 }
 ```
 
@@ -48,9 +50,11 @@ If you don't like repetition, then you can do something like this:
 ```caddyfile
 (listencaddy) {
 	listencaddy {
-		api_key "yourAPIkey"
-		banned_uris "/admin|/wp-admin|/.env|/phpMyAdmin/scripts/setup.php"
-		whitelisted_ips "1.1.1.1|9.9.9.9" # optional
+			api_key "yourAPIkey" # You can use an environment variable if you'd like. If you want to, do "{$YOUR_ENV_VAR_NAME}".
+			banned_uris "/admin|/wp-admin|/.env|/phpMyAdmin/scripts/setup.php" # TODO: add more of these. If you want to help, contribute!
+			whitelisted_ips "1.1.1.1|9.9.9.9" #optional
+			abuseipdb_message "This IP accessed the path {{.Path}}, which is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to AbuseIPDB as comment. You can use {{.Path}} in the message to show the path that was accessed, which utilizes the Go template engine.
+			response_message "{{.Path}} is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to the client when they accessed a banned path.. You can use {{.Path}} in the message to show the path that was accessed, which utilizes the Go template engine.
 	}
 }
 
