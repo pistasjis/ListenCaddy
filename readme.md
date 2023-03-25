@@ -14,6 +14,8 @@ This gets built from Caddy's servers, so you don't need to build it yourself and
 
 ### BYOC (Build Your Own Caddy)
 
+**Note: these instructions are made for Linux. It shouldn't be too different on other UNIX\* systems, but I haven't tried (and can't). If you have instructions for Windows, please make a PR.**
+
 You will need the following before you can build Caddy with ListenCaddy:
 - A server
 - [xcaddy](https://github.com/caddyserver/xcaddy)
