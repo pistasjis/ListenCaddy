@@ -4,7 +4,17 @@ A Caddy 2 module that **listens** for **abuse** and reports abuse to AbuseIPDB.
 [![Go Report Card](https://goreportcard.com/badge/github.com/Odyssey346/ListenCaddy)](https://goreportcard.com/report/github.com/Odyssey346/ListenCaddy) [![Build Artifact](https://github.com/Odyssey346/ListenCaddy/actions/workflows/build-artifact.yml/badge.svg)](https://github.com/Odyssey346/ListenCaddy/actions/workflows/build-artifact.yml)
 
 ## Setup
-You will need the following before you can begin using ListenCaddy:
+
+### From Caddy
+Caddy now supports adding packages via ``caddy add-package``. This is the easiest way to install ListenCaddy.
+
+Just run ``caddy add-package github.com/Odyssey346/ListenCaddy`` and you're done! You can now use ListenCaddy in your Caddyfile.
+
+This gets built from Caddy's servers, so you don't need to build it yourself and you don't need any extra dependencies other than Caddy itself. It's also way faster than building it yourself.
+
+### BYOC (Build Your Own Caddy)
+
+You will need the following before you can build Caddy with ListenCaddy:
 - A server
 - [xcaddy](https://github.com/caddyserver/xcaddy)
 - An [AbuseIPDB](https://www.abuseipdb.com/) account and API key ready
