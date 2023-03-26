@@ -69,6 +69,7 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 	// used multiple times and seems to blank out after it's used for a bit
 	path := r.URL.Path
 	match, _ := regexp.MatchString(l.BannedURIs, path)
+	var response_message string
 
 	split := regexp.MustCompile(`((?::))(?:[0-9]+)$`).Split(r.RemoteAddr, -1)
 	if match {
@@ -100,10 +101,9 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 				l.Logger.Info("Error executing RespondMessage", zap.String("error", templateExecuteError.Error()))
 			}
 
-			http.Error(w, tmpl_output.String(), http.StatusForbidden)
-			return nil
+			response_message = tmpl_output.String()
 		} else {
-			http.Error(w, path+" is a banned path. Powered by ListenCaddy", http.StatusForbidden)
+			response_message = path + " is a banned path. Powered by ListenCaddy"
 		}
 
 		go func(l ListenCaddy) {
@@ -164,24 +164,16 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 			}
 
 			defer res.Body.Close()
-			l.Logger.Info("response Status:", zap.String("Status", res.Status))
 		}(l)
+		// close connection using caddyhttp.StaticResponse
+		return caddyhttp.StaticResponse{
+			StatusCode: "403",
+			Body:       response_message,
+			Close:      true,
+		}.ServeHTTP(w, r, next)
+	} else {
+		return next.ServeHTTP(w, r)
 	}
-	// close connection. This is a bit hacky but it works (I think)
-	hj, ok := w.(http.Hijacker)
-	if !ok {
-		l.Logger.Info("Couldn't create hijack", zap.String("ip", split[0]), zap.String("path", path))
-		return fmt.Errorf("couldn't create hijack")
-	}
-	conn, bufrw, err := hj.Hijack()
-	if err != nil {
-		l.Logger.Info("Couldn't hijack", zap.String("ip", split[0]), zap.String("path", path))
-		return fmt.Errorf("couldn't hijack")
-	}
-	defer conn.Close()
-	bufrw.WriteString("HTTP/1.1 403 Forbidden\r")
-
-	return next.ServeHTTP(w, r)
 }
 
 type AbuseIPDBReport struct {
