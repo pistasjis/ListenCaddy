@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-Please send an email to [hi@odyssey346.dev](mailto:hi@odyssey346.dev). **Do not make a GitHub issue.**
+Please send an email to [hi@pistasjis.net](mailto:hi@pistasjis.net). **Do not make a GitHub issue.**
 
 Your email needs to contain the following:
 
