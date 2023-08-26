@@ -49,7 +49,7 @@ func (l *ListenCaddy) Provision(ctx caddy.Context) error {
 	l.Logger = ctx.Logger(l)
 	switch l.APIKey {
 	case "":
-		return fmt.Errorf("Missing API Key from AbuseIPDB. Check your Caddyfile and read the docs.")
+		return fmt.Errorf("missing API Key from AbuseIPDB. check your Caddyfile and read the docs")
 	default:
 		return nil
 	}
@@ -57,18 +57,28 @@ func (l *ListenCaddy) Provision(ctx caddy.Context) error {
 
 func (l *ListenCaddy) Validate() error {
 	if l.APIKey == "" {
-		return fmt.Errorf("Missing API Key from AbuseIPDB. Check your Caddyfile and read the docs.")
+		return fmt.Errorf("missing API Key from AbuseIPDB. check your Caddyfile and read the docs")
 	}
 	if l.BannedURIs == "" {
-		return fmt.Errorf("Can't find any banned URIs/paths. Check your Caddyfile and read the docs.")
+		return fmt.Errorf("can't find any banned URIs/paths. check your Caddyfile and read the docs")
 	}
 	return nil
 }
 
+type Response struct {
+	// Path
+	Path string
+	// User-Agent
+	UserAgent string
+}
+
 func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-	// used multiple times and seems to blank out after it's used for a bit
-	path := r.URL.Path
-	match, _ := regexp.MatchString(l.BannedURIs, path)
+	// There's a weird but with r.URL.Path where it seems to just be empty after using it for a bit, so I just set a variable to it and that seems to work. Very weird.
+	response := Response{
+		Path:      r.URL.Path,
+		UserAgent: r.UserAgent(),
+	}
+	match, _ := regexp.MatchString(l.BannedURIs, response.Path)
 	var response_message string
 
 	split := regexp.MustCompile(`((?::))(?:[0-9]+)$`).Split(r.RemoteAddr, -1)
@@ -76,69 +86,55 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 		if l.WhitelistedIPs != "" {
 			isWhitelisted, _ := regexp.MatchString(l.WhitelistedIPs, split[0])
 			if isWhitelisted {
-				l.Logger.Info("Whitelisted IP accessed a banned URI/path", zap.String("ip", split[0]), zap.String("path", path), zap.String("whitelisted_ips", l.WhitelistedIPs))
+				l.Logger.Info("whitelisted IP accessed a banned URI/path", zap.String("ip", split[0]), zap.String("path", response.Path), zap.String("whitelisted_ips", l.WhitelistedIPs))
 				return next.ServeHTTP(w, r)
 			}
 		}
 
+		// If the user has set a custom response message, use that. Otherwise, use the default one.
 		if l.ResponseMessage != "" {
-			type Response struct {
-				Path string
-			}
-
-			response := Response{
-				Path: path,
-			}
-
 			tmpl, err := template.New("respond_message").Parse(l.ResponseMessage)
 			if err != nil {
-				l.Logger.Info("Error parsing RespondMessage", zap.String("error", err.Error()))
+				l.Logger.Info("error parsing RespondMessage", zap.String("error", err.Error()))
 			}
 
 			var tmpl_output bytes.Buffer
 			templateExecuteError := tmpl.Execute(&tmpl_output, response)
 			if templateExecuteError != nil {
-				l.Logger.Info("Error executing RespondMessage", zap.String("error", templateExecuteError.Error()))
+				l.Logger.Info("error executing RespondMessage", zap.String("error", templateExecuteError.Error()))
 			}
 
 			response_message = tmpl_output.String()
 		} else {
-			response_message = path + " is a banned path. Powered by ListenCaddy"
+			response_message = response.Path + " is a banned path. Powered by ListenCaddy"
 		}
 
+		// Report IP to AbuseIPDB in a goroutine
 		go func(l ListenCaddy) {
-			l.Logger.Info("Reporting IP to AbuseIPDB", zap.String("ip", split[0]), zap.String("path", path))
+			l.Logger.Info("reporting IP to AbuseIPDB", zap.String("ip", split[0]), zap.String("path", response.Path))
 
 			// HTTP endpoint
 			posturl := "https://api.abuseipdb.com/api/v2/report"
 
 			var abuseipdb_comment string
 
-			// check if AbuseIPDBMessage is set
+			// check if AbuseIPDBMessage is set. Is it? Use it. Otherwise, use the default message.
 			if l.AbuseIPDBMessage != "" {
-
-				type Comment struct {
-					Path string
-				}
-
-				comment := Comment{
-					Path: path,
-				}
-
 				tmpl, err := template.New("abuseipdb_comment").Parse(l.AbuseIPDBMessage)
 				if err != nil {
-					l.Logger.Info("Error parsing AbuseIPDBMessage", zap.String("error", err.Error()))
+					l.Logger.Info("error parsing AbuseIPDBMessage", zap.String("error", err.Error()))
 				}
 
+				// I don't like this
 				var tmpl_output bytes.Buffer
-				templateExecuteError := tmpl.Execute(&tmpl_output, comment)
+				templateExecuteError := tmpl.Execute(&tmpl_output, response)
 				if templateExecuteError != nil {
-					l.Logger.Info("Error executing AbuseIPDBMessage", zap.String("error", templateExecuteError.Error()))
+					l.Logger.Info("error executing AbuseIPDBMessage", zap.String("error", templateExecuteError.Error()))
 				}
 
 				abuseipdb_comment = tmpl_output.String()
 			} else {
-				abuseipdb_comment = "This IP accessed a banned path: " + path + ". (ListenCaddy)"
+				abuseipdb_comment = "This IP accessed a banned path: " + response.Path + ". (ListenCaddy)"
 			}
 
 			reportJSON := AbuseIPDBReport{
@@ -151,7 +147,7 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 			// Create a HTTP post request
 			r, err := http.NewRequest("POST", posturl, bytes.NewBuffer(body))
 			if err != nil {
-				panic(err)
+				l.Logger.Error("error creating HTTP request", zap.String("error", err.Error()))
 			}
 			r.Header.Set("Content-Type", "application/json")
 			r.Header.Set("Accept", "application/json")
@@ -160,12 +156,12 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 			client := &http.Client{}
 			res, err := client.Do(r)
 			if err != nil {
-				panic(err)
+				l.Logger.Error("error sending HTTP request", zap.String("error", err.Error()))
 			}
 
 			defer res.Body.Close()
 		}(l)
-		// close connection using caddyhttp.StaticResponse
+		// send response using Caddy's StaticResponse, which also allows us to close the connection. You should have seen the previous method it used, it was a mess. Hijacking the connection and writing to it directly 🤡
 		return caddyhttp.StaticResponse{
 			StatusCode: "403",
 			Body:       response_message,
@@ -177,9 +173,12 @@ func (l ListenCaddy) ServeHTTP(w http.ResponseWriter, r *http.Request, next cadd
 }
 
 type AbuseIPDBReport struct {
-	IP         string `json:"ip"`
+	// The IP to report
+	IP string `json:"ip"`
+	// Categories for the report
 	Categories string `json:"categories"`
-	Comment    string `json:"comment"`
+	// Comment for the report
+	Comment string `json:"comment"`
 }
 
 // UnmarshalCaddyfile implements caddyfile.Unmarshaler.
