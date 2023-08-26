@@ -52,8 +52,9 @@ listencaddy {
         api_key "yourAPIkey" # You can use an environment variable if you'd like. If you want to, do "{$YOUR_ENV_VAR_NAME}".
         banned_uris "/admin|/wp-admin|/.env|/phpMyAdmin/scripts/setup.php" # TODO: add more of these. If you want to help, contribute!
 		whitelisted_ips "1.1.1.1|9.9.9.9" #optional
-		abuseipdb_message "This IP accessed the path {{.Path}}, which is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to AbuseIPDB as comment. You can use {{.Path}} in the message to show the path that was accessed, which utilizes the Go template engine.
-		response_message "{{.Path}} is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to the client when they accessed a banned path.. You can use {{.Path}} in the message to show the path that was accessed, which utilizes the Go template engine.
+		abuseipdb_message "This IP accessed the path {{.Path}}, which is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to AbuseIPDB as comment. Take a look at Template Options below for some information you can put in your report.
+		response_message "{{.Path}} is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to the client when they accessed a banned path.
+		Take a look at Template Options below for some information you can put in your response.
 }
 ```
 
@@ -65,8 +66,8 @@ If you don't like repetition, then you can do something like this:
 			api_key "yourAPIkey" # You can use an environment variable if you'd like. If you want to, do "{$YOUR_ENV_VAR_NAME}".
 			banned_uris "/admin|/wp-admin|/.env|/phpMyAdmin/scripts/setup.php" # TODO: add more of these. If you want to help, contribute!
 			whitelisted_ips "1.1.1.1|9.9.9.9" #optional
-			abuseipdb_message "This IP accessed the path {{.Path}}, which is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to AbuseIPDB as comment. You can use {{.Path}} in the message to show the path that was accessed, which utilizes the Go template engine.
-			response_message "{{.Path}} is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to the client when they accessed a banned path.. You can use {{.Path}} in the message to show the path that was accessed, which utilizes the Go template engine.
+			abuseipdb_message "This IP accessed the path {{.Path}}, which is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to AbuseIPDB as comment. This is the message that gets sent to the client when they accessed a banned path. Take a look at Template Options below for some information you can put in your report.
+			response_message "{{.Path}} is banned. Powered by ListenCaddy" # Optional. This is the message that gets sent to the client when they accessed a banned path. Take a look at Template Options below for some information you can put in your response.
 	}
 }
 
@@ -80,3 +81,12 @@ yourotherdomain.xyz {
 	respond / "Hello world!" 200
 }
 ```
+
+### Template Options
+
+ListenCaddy allows you to get some information about the reported user in the AbuseIPDB report or as a response.
+
+| Variable | What it does |
+| -------- | ------------ |
+| .Path    | Tells you what path the abusive IP accessed. For example, /admin. |
+| .UserAgent | Tells you what User-Agent the abusive IP used. For example, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36". |
